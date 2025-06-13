@@ -47,13 +47,15 @@ public:
 
     // allocate exactly one OutputMessage (std::allocate_shared only ever asks for 1)
     pointer allocate(size_type /*n*/) {
-        return LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
-            .allocate(1);
+        // construct the pooling allocator via its templated ctor
+        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY> pool(*this);
+        return pool.allocate(1);
     }
     // return exactly one to the pool
     void deallocate(pointer p, size_type /*n*/) {
-        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
-            .deallocate(p, 1);
+        // same here: construct with *this
+        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY> pool(*this);
+        pool.deallocate(p, 1);
     }
 
     // rebinding any type U yields this same allocator
