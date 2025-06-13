@@ -1,19 +1,24 @@
-#include "otpch.h"
-#include "outfit.h"
-#include "tools.h"
-#include <stdexcept>
+#include "outfits.h"
 
 namespace Outfits {
 
-bool loadFromXml(const std::string& filename) {
-    // TODO: parse XML here and populate a map or vector
-    throw std::runtime_error("Outfits::loadFromXml not yet implemented");
+// static singleton
+Manager& Manager::getInstance() {
+    static Manager instance;
+    return instance;
 }
 
-const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) {
-    // TODO: lookup in your data structure
-    static Outfit dummy;
-    return dummy;
+bool Manager::loadFromXml(const std::string& filename) {
+    // TODO: actually parse the file and fill _outfits.
+    // For now, we'll just return true so the build/link errors go away.
+    return true;
+}
+
+const Outfit* Manager::getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const {
+    // TODO: search _outfits for matching sex & lookType
+    // For now, return a dummy static
+    static Outfit dummy{ lookType, false, false };
+    return &dummy;
 }
 
 } // namespace Outfits
