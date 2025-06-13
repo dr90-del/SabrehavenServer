@@ -18,8 +18,8 @@
  */
 
 #include "otpch.h"
-#include "outfits.h"        // your header for the Outfits API
-#include "tools.h"          // whatever helpers you need
+#include "outfits.h"        // declares loadFromXml, getOutfitByLookType
+#include "tools.h"
 #include <stdexcept>
 
 namespace Outfits {
@@ -41,4 +41,3 @@ const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) {
 
 } // namespace Outfits
 
-}
