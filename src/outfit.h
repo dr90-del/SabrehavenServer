@@ -1,27 +1,36 @@
-#ifndef FS_OUTFIT_H
-#define FS_OUTFIT_H
+#ifndef FS_OUTFITS_H
+#define FS_OUTFITS_H
 
-#include "enums.h"      // pulls in the project’s definition of PlayerSex_t
+#include "enums.h"     // for PlayerSex_t
 #include <string>
-#include <cstdint>
-
-struct Outfit {
-    // TODO: add whatever fields you need, e.g.:
-    // uint16_t lookType;
-    // std::string name;
-    // ... etc.
-};
+#include <vector>
 
 namespace Outfits {
 
-/// Load all outfits from the given XML file.
-/// Returns true on success, false on error.
-bool loadFromXml(const std::string& filename);
+struct Outfit {
+    uint16_t lookType{0};
+    bool premium{false};
+    bool unlocked{false};
+    // later you can add more fields (e.g. addon requirements, display name, etc)
+};
 
-/// Return the Outfit for the given sex and lookType.
-/// If not found, returns a reference to a default Outfit.
-const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType);
+class Manager {
+public:
+    // Singleton accessor
+    static Manager& getInstance();
 
-}  // namespace Outfits
+    // Load all outfits from your XML (pass the tibia/creatures xml here)
+    bool loadFromXml(const std::string& filename);
 
-#endif // FS_OUTFIT_H
+    // Return a pointer to the outfit entry (or nullptr if not found)
+    const Outfit* getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const;
+
+private:
+    Manager() = default;
+    std::vector<Outfit> _outfits;
+    // you might index by sex+lookType in a map for speed
+};
+
+} // namespace Outfits
+
+#endif // FS_OUTFITS_H
