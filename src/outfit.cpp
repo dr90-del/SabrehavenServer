@@ -24,10 +24,6 @@
 
 extern Scheduler g_scheduler;
 
-// The capacity constant and allocator are now defined in outputmessage.h
-// const uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
-// class OutputMessageAllocator { … };
-
 void OutputMessagePool::scheduleSendAll()
 {
     auto functor = std::bind(&OutputMessagePool::sendAll, this);
@@ -36,7 +32,6 @@ void OutputMessagePool::scheduleSendAll()
 
 void OutputMessagePool::sendAll()
 {
-    // dispatcher thread
     for (auto& protocol : bufferedProtocols) {
         auto& msg = protocol->getCurrentBuffer();
         if (msg) {
@@ -51,7 +46,6 @@ void OutputMessagePool::sendAll()
 
 void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
 {
-    // dispatcher thread
     if (bufferedProtocols.empty()) {
         scheduleSendAll();
     }
@@ -60,7 +54,6 @@ void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
 
 void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
 {
-    // dispatcher thread
     auto it = std::find(bufferedProtocols.begin(), bufferedProtocols.end(), protocol);
     if (it != bufferedProtocols.end()) {
         std::swap(*it, bufferedProtocols.back());
@@ -70,6 +63,6 @@ void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
 
 OutputMessage_ptr OutputMessagePool::getOutputMessage()
 {
-    // allocate_shared will use the allocator defined in outputmessage.h
-    return std::allocate_shared<OutputMessage>(OutputMessageAllocator());
+    // switched to make_shared to avoid allocator mismatches
+    return std::make_shared<OutputMessage>();
 }
