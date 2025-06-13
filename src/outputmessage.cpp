@@ -18,30 +18,15 @@
  */
 
 #include "otpch.h"
-
 #include "outputmessage.h"
 #include "protocol.h"
-#include "lockfree.h"
 #include "scheduler.h"
 
 extern Scheduler g_scheduler;
 
-const uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
-const std::chrono::milliseconds OUTPUTMESSAGE_AUTOSEND_DELAY {10};
-
-class OutputMessageAllocator
-{
-    public:
-        typedef OutputMessage value_type;
-
-        // <<< patched for GCC 13 allocator_traits compatibility >>>
-        // Now, rebind<any U> gives back this same allocator type.
-        template<typename U>
-        struct rebind {
-            using other = OutputMessageAllocator;
-        };
-        // <<< end patch >>>
-};
+// The capacity and allocator definitions now live in outputmessage.h
+// const uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
+// class OutputMessageAllocator { … };
 
 void OutputMessagePool::scheduleSendAll()
 {
@@ -51,7 +36,6 @@ void OutputMessagePool::scheduleSendAll()
 
 void OutputMessagePool::sendAll()
 {
-    //dispatcher thread
     for (auto& protocol : bufferedProtocols) {
         auto& msg = protocol->getCurrentBuffer();
         if (msg) {
@@ -66,7 +50,6 @@ void OutputMessagePool::sendAll()
 
 void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
 {
-    //dispatcher thread
     if (bufferedProtocols.empty()) {
         scheduleSendAll();
     }
@@ -75,7 +58,6 @@ void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
 
 void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
 {
-    //dispatcher thread
     auto it = std::find(bufferedProtocols.begin(), bufferedProtocols.end(), protocol);
     if (it != bufferedProtocols.end()) {
         std::swap(*it, bufferedProtocols.back());
@@ -85,5 +67,6 @@ void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
 
 OutputMessage_ptr OutputMessagePool::getOutputMessage()
 {
+    // allocate_shared will use the allocator defined in outputmessage.h
     return std::allocate_shared<OutputMessage>(OutputMessageAllocator());
 }
