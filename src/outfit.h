@@ -1,6 +1,6 @@
 /**
- * The Forgotten Server - a free and open-source MMORPG server emulator
- * Copyright (C) 2019  Mark Samman <mark.samman@gmail.com>
+ * Tibia GIMUD Server - a free and open-source MMORPG server emulator
+ * Copyright (C) 2019 Sabrehaven and Mark Samman <mark.samman@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,47 +17,26 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef FS_OUTFIT_H_C56E7A707E3F422C8C93D9BE09916AA3
-#define FS_OUTFIT_H_C56E7A707E3F422C8C93D9BE09916AA3
+#include "otpch.h"
+#include "outfit.h"         // declares loadFromXml, getOutfitByLookType
+#include "tools.h"
+#include <stdexcept>
 
-#include "enums.h"
+namespace Outfits {
 
-struct Outfit {
-	Outfit(std::string name, uint16_t lookType, bool premium, bool unlocked) :
-		name(std::move(name)), lookType(lookType), premium(premium), unlocked(unlocked) {}
+// Loads your outfits data from XML (implement according to your parser)
+bool loadFromXml(const std::string& filename) {
+    // TODO: parse the file, populate your internal data structures.
+    // Return true on success or false if parse errors occur.
+    throw std::runtime_error("Outfits::loadFromXml not yet implemented");
+}
 
-	std::string name;
-	uint16_t lookType;
-	bool premium;
-	bool unlocked;
-};
+// Returns a reference to the outfit by sex and lookType
+const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) {
+    // TODO: lookup in your container (e.g. a map) and return.
+    // If not found, you might throw or return a default outfit.
+    static Outfit dummy;
+    return dummy;
+}
 
-struct ProtocolOutfit {
-	ProtocolOutfit(const std::string& name, uint16_t lookType, uint8_t addons) :
-		name(name), lookType(lookType), addons(addons) {}
-
-	const std::string& name;
-	uint16_t lookType;
-	uint8_t addons;
-};
-
-class Outfits
-{
-	public:
-		static Outfits& getInstance() {
-			static Outfits instance;
-			return instance;
-		}
-
-		bool loadFromXml();
-
-		const Outfit* getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const;
-		const std::vector<Outfit>& getOutfits(PlayerSex_t sex) const {
-			return outfits[sex];
-		}
-
-	private:
-		std::vector<Outfit> outfits[PLAYERSEX_LAST + 1];
-};
-
-#endif
+} // namespace Outfits
