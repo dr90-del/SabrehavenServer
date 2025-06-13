@@ -2,41 +2,40 @@ name: Build OT Server
 
 on:
   push:
-          branches: [ main, master ]
-  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake liblua5.2-dev libsqlite3-dev
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake liblua5.2-dev libsqlite3-dev
 
-    - name: Configure with CMake
-      run: |
-        mkdir build
-        cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release
+      - name: Configure with CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
 
-    - name: Compile
-      run: |
-        cd build
-        make -j$(nproc)
+      - name: Compile
+        run: |
+          cd build
+          make -j$(nproc)
 
-    - name: Upload server binary
-      uses: actions/upload-artifact@v3
-      with:
-        name: otserver-executable
-        path: build/theforgottenserver  # or the actual binary name
+      - name: Upload server binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: otserver-executable
+          path: build/theforgottenserver
 
-    - name: Upload client binary (if built)
-      uses: actions/upload-artifact@v3
-      with:
-        name: otclient-executable
-        path: SabrehavenOTClient/build/otclient
-        
+      - name: Upload client binary (if built)
+        uses: actions/upload-artifact@v4
+        with:
+          name: otclient-executable
+          path: SabrehavenOTClient/build/otclient
