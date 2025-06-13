@@ -1,6 +1,7 @@
 /**
  * Tibia GIMUD Server - a free and open-source MMORPG server emulator
- * Copyright (C) 2019 Sabrehaven and Mark Samman <mark.samman@gmail.com>
+ * Copyright (C) 2019 Sabrehaven and
+ * Mark Samman <mark.samman@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +25,19 @@
 #include "connection.h"
 #include "tools.h"
 #include "lockfree.h"
-#include <cstddef>  // for std::size_t
 
-// Pool capacity for OutputMessage allocations
+#include <cstddef>  // for std::size_t
+#include <vector>
+#include <cassert>
+#include <cstring>  // for memcpy
+
+class Protocol;
+
+// Pull this constant into the header so the allocator can see it
 static constexpr uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
 
 /**
  * Custom allocator for OutputMessage that uses the lock-free pool.
- * Implements allocate/deallocate + rebind so it satisfies GCC 13's allocator_traits.
  */
 class OutputMessageAllocator {
 public:
@@ -39,15 +45,15 @@ public:
     using pointer    = OutputMessage*;
     using size_type  = std::size_t;
 
-    // Allocate N OutputMessages via the lock-free pooling allocator
+    // allocate N OutputMessages by constructing a pool allocator from *this
     pointer allocate(size_type n) {
-        return LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
-            .allocate(n);
+        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY> pool(*this);
+        return pool.allocate(n);
     }
-    // Return them to the pool
+    // return them to the pool
     void deallocate(pointer p, size_type n) {
-        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
-            .deallocate(p, n);
+        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY> pool(*this);
+        pool.deallocate(p, n);
     }
 
     // rebinding any type U yields this same allocator
@@ -124,14 +130,12 @@ public:
 
     void addProtocolToAutosend(Protocol_ptr protocol);
     void removeProtocolFromAutosend(const Protocol_ptr& protocol);
+
 private:
     OutputMessagePool() = default;
     // NOTE: A vector is used here because this container is mostly read
-    // and relatively rarely modified (only when a client connects/disconnects)
+    // and relatively rarely modified.
     std::vector<Protocol_ptr> bufferedProtocols;
 };
 
 #endif // FS_OUTPUTMESSAGE_H_C06AAED85C7A43939F22D229297C0CC1
-
-
-#endif
