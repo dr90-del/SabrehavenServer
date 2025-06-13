@@ -1,6 +1,6 @@
 /**
- * The Forgotten Server - a free and open-source MMORPG server emulator
- * Copyright (C) 2019  Mark Samman <mark.samman@gmail.com>
+ * Tibia GIMUD Server - a free and open-source MMORPG server emulator
+ * Copyright (C) 2019 Sabrehaven and Mark Samman <mark.samman@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,59 +19,65 @@
 
 #include "otpch.h"
 
-#include "outfit.h"
+#include "outputmessage.h"
+#include "protocol.h"
+#include "lockfree.h"
+#include "scheduler.h"
 
-#include "pugicast.h"
-#include "tools.h"
+extern Scheduler g_scheduler;
 
-bool Outfits::loadFromXml()
+const uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
+const std::chrono::milliseconds OUTPUTMESSAGE_AUTOSEND_DELAY {10};
+
+class OutputMessageAllocator
 {
-	pugi::xml_document doc;
-	pugi::xml_parse_result result = doc.load_file("data/XML/outfits.xml");
-	if (!result) {
-		printXMLError("Error - Outfits::loadFromXml", "data/XML/outfits.xml", result);
-		return false;
-	}
+	public:
+		typedef OutputMessage value_type;
+		template<typename U>
+		struct rebind {typedef LockfreePoolingAllocator<U, OUTPUTMESSAGE_FREE_LIST_CAPACITY> other;};
+};
 
-	for (auto outfitNode : doc.child("outfits").children()) {
-		pugi::xml_attribute attr;
-		if ((attr = outfitNode.attribute("enabled")) && !attr.as_bool()) {
-			continue;
-		}
-
-		if (!(attr = outfitNode.attribute("type"))) {
-			std::cout << "[Warning - Outfits::loadFromXml] Missing outfit type." << std::endl;
-			continue;
-		}
-
-		uint16_t type = pugi::cast<uint16_t>(attr.value());
-		if (type > PLAYERSEX_LAST) {
-			std::cout << "[Warning - Outfits::loadFromXml] Invalid outfit type " << type << "." << std::endl;
-			continue;
-		}
-
-		pugi::xml_attribute lookTypeAttribute = outfitNode.attribute("looktype");
-		if (!lookTypeAttribute) {
-			std::cout << "[Warning - Outfits::loadFromXml] Missing looktype on outfit." << std::endl;
-			continue;
-		}
-
-		outfits[type].emplace_back(
-			outfitNode.attribute("name").as_string(),
-			pugi::cast<uint16_t>(lookTypeAttribute.value()),
-			outfitNode.attribute("premium").as_bool(),
-			outfitNode.attribute("unlocked").as_bool(true)
-		);
-	}
-	return true;
+void OutputMessagePool::scheduleSendAll()
+{
+	auto functor = std::bind(&OutputMessagePool::sendAll, this);
+	g_scheduler.addEvent(createSchedulerTask(OUTPUTMESSAGE_AUTOSEND_DELAY.count(), functor));
 }
 
-const Outfit* Outfits::getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) const
+void OutputMessagePool::sendAll()
 {
-	for (const Outfit& outfit : outfits[sex]) {
-		if (outfit.lookType == lookType) {
-			return &outfit;
+	//dispatcher thread
+	for (auto& protocol : bufferedProtocols) {
+		auto& msg = protocol->getCurrentBuffer();
+		if (msg) {
+			protocol->send(std::move(msg));
 		}
 	}
-	return nullptr;
+
+	if (!bufferedProtocols.empty()) {
+		scheduleSendAll();
+	}
+}
+
+void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
+{
+	//dispatcher thread
+	if (bufferedProtocols.empty()) {
+		scheduleSendAll();
+	}
+	bufferedProtocols.emplace_back(protocol);
+}
+
+void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
+{
+	//dispatcher thread
+	auto it = std::find(bufferedProtocols.begin(), bufferedProtocols.end(), protocol);
+	if (it != bufferedProtocols.end()) {
+		std::swap(*it, bufferedProtocols.back());
+		bufferedProtocols.pop_back();
+	}
+}
+
+OutputMessage_ptr OutputMessagePool::getOutputMessage()
+{
+	return std::allocate_shared<OutputMessage>(OutputMessageAllocator());
 }
