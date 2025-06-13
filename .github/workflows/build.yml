@@ -39,3 +39,4 @@ jobs:
       with:
         name: otclient-executable
         path: SabrehavenOTClient/build/otclient
+        
