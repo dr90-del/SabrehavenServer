@@ -1,20 +1,20 @@
 #ifndef FS_OUTFIT_H
 #define FS_OUTFIT_H
 
+#include "enums.h"      // pulls in the project’s definition of PlayerSex_t
 #include <string>
 #include <cstdint>
 
-enum class PlayerSex_t : uint8_t { MALE = 0, FEMALE = 1 };
-
 struct Outfit {
-  // Define your outfit data here, e.g.:
-  // uint16_t lookType;
-  // std::string name;
+    // TODO: add whatever fields you need, e.g.:
+    // uint16_t lookType;
+    // std::string name;
+    // ... etc.
 };
 
 namespace Outfits {
 
-/// Load all outfits from the given XML file.  
+/// Load all outfits from the given XML file.
 /// Returns true on success, false on error.
 bool loadFromXml(const std::string& filename);
 
@@ -22,6 +22,6 @@ bool loadFromXml(const std::string& filename);
 /// If not found, returns a reference to a default Outfit.
 const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType);
 
-} // namespace Outfits
+}  // namespace Outfits
 
 #endif // FS_OUTFIT_H
