@@ -18,51 +18,27 @@
  */
 
 #include "otpch.h"
-#include "outputmessage.h"
-#include "protocol.h"
-#include "scheduler.h"
+#include "outfits.h"        // your header for the Outfits API
+#include "tools.h"          // whatever helpers you need
+#include <stdexcept>
 
-extern Scheduler g_scheduler;
+namespace Outfits {
 
-void OutputMessagePool::scheduleSendAll()
-{
-    auto functor = std::bind(&OutputMessagePool::sendAll, this);
-    g_scheduler.addEvent(createSchedulerTask(OUTPUTMESSAGE_AUTOSEND_DELAY.count(), functor));
+// Loads your outfits data from XML (implement according to your parser)
+bool loadFromXml(const std::string& filename) {
+    // TODO: parse the file, populate your internal data structures.
+    // Return true on success or false if parse errors occur.
+    throw std::runtime_error("Outfits::loadFromXml not yet implemented");
 }
 
-void OutputMessagePool::sendAll()
-{
-    for (auto& protocol : bufferedProtocols) {
-        auto& msg = protocol->getCurrentBuffer();
-        if (msg) {
-            protocol->send(std::move(msg));
-        }
-    }
-
-    if (!bufferedProtocols.empty()) {
-        scheduleSendAll();
-    }
+// Returns a reference to the outfit by sex and lookType
+const Outfit& getOutfitByLookType(PlayerSex_t sex, uint16_t lookType) {
+    // TODO: lookup in your container (e.g. a map) and return.
+    // If not found, you might throw or return a default outfit.
+    static Outfit dummy;
+    return dummy;
 }
 
-void OutputMessagePool::addProtocolToAutosend(Protocol_ptr protocol)
-{
-    if (bufferedProtocols.empty()) {
-        scheduleSendAll();
-    }
-    bufferedProtocols.emplace_back(protocol);
-}
+} // namespace Outfits
 
-void OutputMessagePool::removeProtocolFromAutosend(const Protocol_ptr& protocol)
-{
-    auto it = std::find(bufferedProtocols.begin(), bufferedProtocols.end(), protocol);
-    if (it != bufferedProtocols.end()) {
-        std::swap(*it, bufferedProtocols.back());
-        bufferedProtocols.pop_back();
-    }
-}
-
-OutputMessage_ptr OutputMessagePool::getOutputMessage()
-{
-    // switched to make_shared to avoid allocator mismatches
-    return std::make_shared<OutputMessage>();
 }
