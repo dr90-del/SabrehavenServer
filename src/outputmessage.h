@@ -23,82 +23,115 @@
 #include "networkmessage.h"
 #include "connection.h"
 #include "tools.h"
+#include "lockfree.h"
+#include <cstddef>  // for std::size_t
 
-class Protocol;
+// Pool capacity for OutputMessage allocations
+static constexpr uint16_t OUTPUTMESSAGE_FREE_LIST_CAPACITY = 2048;
+
+/**
+ * Custom allocator for OutputMessage that uses the lock-free pool.
+ * Implements allocate/deallocate + rebind so it satisfies GCC 13's allocator_traits.
+ */
+class OutputMessageAllocator {
+public:
+    using value_type = OutputMessage;
+    using pointer    = OutputMessage*;
+    using size_type  = std::size_t;
+
+    // Allocate N OutputMessages via the lock-free pooling allocator
+    pointer allocate(size_type n) {
+        return LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
+            .allocate(n);
+    }
+    // Return them to the pool
+    void deallocate(pointer p, size_type n) {
+        LockfreePoolingAllocator<OutputMessage, OUTPUTMESSAGE_FREE_LIST_CAPACITY>()
+            .deallocate(p, n);
+    }
+
+    // rebinding any type U yields this same allocator
+    template<typename U>
+    struct rebind {
+        using other = OutputMessageAllocator;
+    };
+};
 
 class OutputMessage : public NetworkMessage
 {
 public:
-	OutputMessage() = default;
+    OutputMessage() = default;
 
-	// non-copyable
-	OutputMessage(const OutputMessage&) = delete;
-	OutputMessage& operator=(const OutputMessage&) = delete;
+    // non-copyable
+    OutputMessage(const OutputMessage&) = delete;
+    OutputMessage& operator=(const OutputMessage&) = delete;
 
-	uint8_t* getOutputBuffer() {
-		return buffer + outputBufferStart;
-	}
+    uint8_t* getOutputBuffer() {
+        return buffer + outputBufferStart;
+    }
 
-	void writeMessageLength() {
-		add_header(info.length);
-	}
+    void writeMessageLength() {
+        add_header(info.length);
+    }
 
-	void addCryptoHeader() {
-		writeMessageLength();
-	}
+    void addCryptoHeader() {
+        writeMessageLength();
+    }
 
-	inline void append(const NetworkMessage& msg) {
-		auto msgLen = msg.getLength();
-		memcpy(buffer + info.position, msg.getBuffer() + 4, msgLen);
-		info.length += msgLen;
-		info.position += msgLen;
-	}
+    inline void append(const NetworkMessage& msg) {
+        auto msgLen = msg.getLength();
+        memcpy(buffer + info.position, msg.getBuffer() + 4, msgLen);
+        info.length += msgLen;
+        info.position += msgLen;
+    }
 
-	inline void append(const OutputMessage_ptr& msg) {
-		auto msgLen = msg->getLength();
-		memcpy(buffer + info.position, msg->getBuffer() + 4, msgLen);
-		info.length += msgLen;
-		info.position += msgLen;
-	}
+    inline void append(const OutputMessage_ptr& msg) {
+        auto msgLen = msg->getLength();
+        memcpy(buffer + info.position, msg->getBuffer() + 4, msgLen);
+        info.length += msgLen;
+        info.position += msgLen;
+    }
 
 protected:
-	template <typename T>
-	inline void add_header(T add) {
-		assert(outputBufferStart >= sizeof(T));
-		outputBufferStart -= sizeof(T);
-		memcpy(buffer + outputBufferStart, &add, sizeof(T));
-		//added header size to the message size
-		info.length += sizeof(T);
-	}
+    template <typename T>
+    inline void add_header(T add) {
+        assert(outputBufferStart >= sizeof(T));
+        outputBufferStart -= sizeof(T);
+        memcpy(buffer + outputBufferStart, &add, sizeof(T));
+        // added header size to the message size
+        info.length += sizeof(T);
+    }
 
-	MsgSize_t outputBufferStart = INITIAL_BUFFER_POSITION;
+    MsgSize_t outputBufferStart = INITIAL_BUFFER_POSITION;
 };
 
 class OutputMessagePool
 {
 public:
-	// non-copyable
-	OutputMessagePool(const OutputMessagePool&) = delete;
-	OutputMessagePool& operator=(const OutputMessagePool&) = delete;
+    // non-copyable
+    OutputMessagePool(const OutputMessagePool&) = delete;
+    OutputMessagePool& operator=(const OutputMessagePool&) = delete;
 
-	static OutputMessagePool& getInstance() {
-		static OutputMessagePool instance;
-		return instance;
-	}
+    static OutputMessagePool& getInstance() {
+        static OutputMessagePool instance;
+        return instance;
+    }
 
-	void sendAll();
-	void scheduleSendAll();
+    void sendAll();
+    void scheduleSendAll();
 
-	static OutputMessage_ptr getOutputMessage();
+    static OutputMessage_ptr getOutputMessage();
 
-	void addProtocolToAutosend(Protocol_ptr protocol);
-	void removeProtocolFromAutosend(const Protocol_ptr& protocol);
+    void addProtocolToAutosend(Protocol_ptr protocol);
+    void removeProtocolFromAutosend(const Protocol_ptr& protocol);
 private:
-	OutputMessagePool() = default;
-	//NOTE: A vector is used here because this container is mostly read
-	//and relatively rarely modified (only when a client connects/disconnects)
-	std::vector<Protocol_ptr> bufferedProtocols;
+    OutputMessagePool() = default;
+    // NOTE: A vector is used here because this container is mostly read
+    // and relatively rarely modified (only when a client connects/disconnects)
+    std::vector<Protocol_ptr> bufferedProtocols;
 };
+
+#endif // FS_OUTPUTMESSAGE_H_C06AAED85C7A43939F22D229297C0CC1
 
 
 #endif
