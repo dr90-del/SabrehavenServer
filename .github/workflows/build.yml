@@ -1,5 +1,10 @@
 name: Build OT Server
 
+# Prevent new pushes from cancelling an in-progress build
+concurrency:
+  group: "build-ot-server"
+  cancel-in-progress: false
+
 on:
   push:
     branches: [ main, master ]
